@@ -14,15 +14,44 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
+  
+  // Debug flag
+  const [debugInfo, setDebugInfo] = useState({});
 
   useEffect(() => {
+    console.log('AuthProvider mounted');
+    
     // Get initial session
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await fetchUserProfile(session.user);
+      try {
+        console.log('Getting initial session...');
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session fetch error:', error);
+          setAuthError(error);
+          setDebugInfo(prev => ({ ...prev, sessionError: error }));
+        } else if (data?.session?.user) {
+          console.log('Session found:', data.session.user.email);
+          setUser({
+            id: data.session.user.id,
+            email: data.session.user.email,
+            name: data.session.user.email.split('@')[0],
+            createdAt: data.session.user.created_at
+          });
+          setDebugInfo(prev => ({ ...prev, session: 'Active', user: data.session.user.email }));
+        } else {
+          console.log('No active session found');
+          setDebugInfo(prev => ({ ...prev, session: 'None' }));
+        }
+      } catch (error) {
+        console.error('Session error:', error);
+        setAuthError(error);
+        setDebugInfo(prev => ({ ...prev, sessionCatchError: error.message }));
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     getSession();
@@ -30,176 +59,152 @@ export const AuthProvider = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (session?.user) {
-          await fetchUserProfile(session.user);
-        } else {
-          setUser(null);
+        console.log('Auth state change:', event);
+        setDebugInfo(prev => ({ ...prev, lastAuthEvent: event }));
+        
+        try {
+          if (session?.user) {
+            console.log('User authenticated:', session.user.email);
+            setUser({
+              id: session.user.id,
+              email: session.user.email,
+              name: session.user.email.split('@')[0],
+              createdAt: session.user.created_at
+            });
+          } else {
+            console.log('User signed out');
+            setUser(null);
+          }
+        } catch (error) {
+          console.error('Auth state change error:', error);
+          setAuthError(error);
+          setDebugInfo(prev => ({ ...prev, authStateChangeError: error.message }));
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log('Unsubscribing from auth changes');
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const fetchUserProfile = async (authUser) => {
-    try {
-      // First, try to get existing profile
-      let { data: profile, error } = await supabase
-        .from('user_profiles_bb2024')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-
-      // If profile doesn't exist, create a basic one
-      if (error && error.code === 'PGRST116') {
-        console.log('Profile not found, creating a basic one...');
-        
-        const { data: newProfile, error: createError } = await supabase
-          .from('user_profiles_bb2024')
-          .insert({
-            id: authUser.id,
-            full_name: authUser.email.split('@')[0],
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('Error creating profile:', createError);
-          profile = null;
-        } else {
-          profile = newProfile;
-          console.log('Basic profile created successfully');
-        }
-      } else if (error) {
-        console.error('Error fetching profile:', error);
-        profile = null;
-      }
-
-      const userData = {
-        id: authUser.id,
-        email: authUser.email,
-        name: profile?.full_name || authUser.email.split('@')[0],
-        avatar: profile?.avatar_url,
-        preferences: {
-          skillLevel: profile?.skill_level || 'intermediate',
-          cookingTime: profile?.preferred_cooking_time || 30,
-          dietaryRestrictions: profile?.dietary_restrictions || [],
-          notifications: profile?.notifications_enabled ?? true,
-          darkMode: profile?.dark_mode ?? false,
-          language: profile?.language || 'en'
-        },
-        createdAt: profile?.created_at || authUser.created_at
-      };
-
-      setUser(userData);
-    } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
-      // Fallback user data
-      setUser({
-        id: authUser.id,
-        email: authUser.email,
-        name: authUser.email.split('@')[0],
-        preferences: {
-          skillLevel: 'intermediate',
-          cookingTime: 30,
-          dietaryRestrictions: [],
-          notifications: true,
-          darkMode: false,
-          language: 'en'
-        },
-        createdAt: authUser.created_at
-      });
-    }
-  };
-
-  // Simplified signup - just create the account
+  // Simplified signup with better error handling
   const signUp = async (userData) => {
+    setDebugInfo(prev => ({ ...prev, signUpAttempt: userData.email }));
+    console.log('Attempting signup for:', userData.email);
+    
     try {
-      // Simple signup with just email and password
+      // Clear any previous errors
+      setAuthError(null);
+      
+      // Attempt signup with Supabase
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
         options: {
           data: {
-            full_name: userData.fullName || userData.email.split('@')[0]
+            name: userData.email.split('@')[0]
           }
         }
       });
 
       if (error) {
-        console.error('Signup error:', error);
-        throw error;
+        console.error('Sign up error:', error);
+        setDebugInfo(prev => ({ ...prev, signUpError: error.message }));
+        return { success: false, error: error.message };
       }
-
-      return { success: true, data };
+      
+      if (data?.user) {
+        console.log('Signup successful:', data.user.email);
+        setDebugInfo(prev => ({ ...prev, signUpSuccess: true, userId: data.user.id }));
+        return { success: true, data };
+      } else {
+        console.log('Signup returned no user:', data);
+        setDebugInfo(prev => ({ ...prev, signUpNoUser: true, data }));
+        return { success: false, error: 'Signup failed with no error' };
+      }
     } catch (error) {
-      console.error('Sign up error:', error);
+      console.error('Sign up exception:', error);
+      setDebugInfo(prev => ({ ...prev, signUpException: error.message }));
       return { 
         success: false, 
-        error: error.message || 'Failed to create account. Please try again.' 
+        error: error.message || 'An unexpected error occurred during signup' 
       };
     }
   };
 
   const login = async (credentials) => {
+    setDebugInfo(prev => ({ ...prev, loginAttempt: credentials.email }));
+    console.log('Attempting login for:', credentials.email);
+    
     try {
+      // Clear any previous errors
+      setAuthError(null);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: credentials.email,
         password: credentials.password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Login error:', error);
+        setDebugInfo(prev => ({ ...prev, loginError: error.message }));
+        return { success: false, error: error.message };
+      }
 
-      return { success: true, data };
+      if (data?.session) {
+        console.log('Login successful');
+        setDebugInfo(prev => ({ ...prev, loginSuccess: true }));
+        return { success: true, data };
+      } else {
+        console.log('Login returned no session:', data);
+        setDebugInfo(prev => ({ ...prev, loginNoSession: true, data }));
+        return { success: false, error: 'Login failed with no error' };
+      }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login exception:', error);
+      setDebugInfo(prev => ({ ...prev, loginException: error.message }));
       return { success: false, error: error.message };
     }
   };
 
   const logout = async () => {
+    console.log('Attempting logout');
     try {
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      setUser(null);
+      if (error) {
+        console.error('Logout error:', error);
+        setAuthError(error);
+        setDebugInfo(prev => ({ ...prev, logoutError: error.message }));
+      } else {
+        console.log('Logout successful');
+        setUser(null);
+        setDebugInfo(prev => ({ ...prev, logoutSuccess: true }));
+      }
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout exception:', error);
+      setAuthError(error);
+      setDebugInfo(prev => ({ ...prev, logoutException: error.message }));
     }
   };
 
+  // Simplified updateUser
   const updateUser = async (updates) => {
     try {
-      const { error } = await supabase
-        .from('user_profiles_bb2024')
-        .update({
-          full_name: updates.name,
-          avatar_url: updates.avatar,
-          skill_level: updates.preferences?.skillLevel,
-          preferred_cooking_time: updates.preferences?.cookingTime,
-          dietary_restrictions: updates.preferences?.dietaryRestrictions,
-          notifications_enabled: updates.preferences?.notifications,
-          dark_mode: updates.preferences?.darkMode,
-          language: updates.preferences?.language,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      // Update local state
+      console.log('Updating user:', updates);
+      // Only update local state
       setUser(prev => ({
         ...prev,
-        ...updates,
-        preferences: {
-          ...prev.preferences,
-          ...updates.preferences
-        }
+        ...updates
       }));
-
+      setDebugInfo(prev => ({ ...prev, userUpdated: true }));
       return { success: true };
     } catch (error) {
       console.error('Update user error:', error);
+      setDebugInfo(prev => ({ ...prev, updateUserError: error.message }));
       return { success: false, error: error.message };
     }
   };
@@ -212,6 +217,9 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     isAuthenticated: !!user,
+    authError,
+    debugInfo, // Expose debug info
+    clearDebugInfo: () => setDebugInfo({}),
   };
 
   return (

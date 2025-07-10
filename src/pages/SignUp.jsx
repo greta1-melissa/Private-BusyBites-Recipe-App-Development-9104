@@ -1,79 +1,71 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiMail, FiLock, FiUser, FiEye, FiEyeOff, FiChef } = FiIcons;
+const { FiMail, FiLock, FiUser, FiEye, FiEyeOff, FiChef, FiBug } = FiIcons;
 
 const SignUp = () => {
-  const { signUp, isAuthenticated } = useAuth();
+  const { signUp, isAuthenticated, debugInfo, clearDebugInfo } = useAuth();
   const { success, error: showError } = useToast();
+  const navigate = useNavigate();
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    confirmPassword: '',
-    fullName: ''
+    confirmPassword: ''
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showDebug, setShowDebug] = useState(false);
 
   if (isAuthenticated) {
-    return <Navigate to="/settings" replace />;
+    return <Navigate to="/" replace />;
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    clearDebugInfo();
 
-    // Validate passwords match
+    // Simple validation
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setIsLoading(false);
       return;
     }
 
-    // Validate password strength
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long');
       setIsLoading(false);
       return;
     }
 
-    // Validate required fields
-    if (!formData.email) {
-      setError('Please enter your email');
-      setIsLoading(false);
-      return;
-    }
-
     try {
+      console.log('Submitting signup form...');
       const result = await signUp({
         email: formData.email,
-        password: formData.password,
-        fullName: formData.fullName
+        password: formData.password
       });
       
+      console.log('Signup result:', result);
+      
       if (!result.success) {
-        const errorMessage = result.error || 'Sign up failed';
-        setError(errorMessage);
-        showError('Sign up failed', errorMessage);
+        setError(result.error || 'Sign up failed');
+        showError('Signup Failed', result.error || 'Something went wrong');
       } else {
-        success(
-          'Account created successfully!', 
-          'Welcome to BusyBites! Please set your preferences in the settings.'
-        );
+        success('Account created successfully!', 'Please sign in with your new credentials');
+        navigate('/login');
       }
     } catch (err) {
-      console.error('Signup error:', err);
-      const errorMessage = 'An unexpected error occurred. Please try again.';
-      setError(errorMessage);
-      showError('Sign up failed', errorMessage);
+      console.error('Signup form error:', err);
+      setError('An unexpected error occurred: ' + err.message);
+      showError('System Error', err.message);
     } finally {
       setIsLoading(false);
     }
@@ -132,23 +124,6 @@ const SignUp = () => {
 
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">
-                Full Name (Optional)
-              </label>
-              <div className="relative">
-                <SafeIcon icon={FiUser} className="absolute left-3 top-3 w-5 h-5 text-text-secondary" />
-                <input
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                  placeholder="Enter your name"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
                 Email *
               </label>
               <div className="relative">
@@ -201,7 +176,7 @@ const SignUp = () => {
               <div className="relative">
                 <SafeIcon icon={FiLock} className="absolute left-3 top-3 w-5 h-5 text-text-secondary" />
                 <input
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showPassword ? 'text' : 'password'}
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
@@ -209,13 +184,6 @@ const SignUp = () => {
                   placeholder="Confirm your password"
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-3 text-text-secondary hover:text-text-primary transition-colors"
-                >
-                  <SafeIcon icon={showConfirmPassword ? FiEyeOff : FiEye} className="w-5 h-5" />
-                </button>
               </div>
             </div>
 
@@ -248,6 +216,24 @@ const SignUp = () => {
               </Link>
             </p>
           </div>
+          
+          {/* Debug Toggle Button */}
+          <div className="mt-4 text-center">
+            <button 
+              onClick={() => setShowDebug(!showDebug)} 
+              className="text-text-secondary text-xs inline-flex items-center"
+            >
+              <SafeIcon icon={FiBug} className="w-3 h-3 mr-1" />
+              {showDebug ? 'Hide Debug Info' : 'Show Debug Info'}
+            </button>
+          </div>
+          
+          {/* Debug Information */}
+          {showDebug && Object.keys(debugInfo).length > 0 && (
+            <div className="debug-info mt-4 text-xs">
+              {JSON.stringify(debugInfo, null, 2)}
+            </div>
+          )}
         </motion.div>
 
         {/* Privacy Notice */}

@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiMail, FiLock, FiEye, FiEyeOff, FiChef } = FiIcons;
+const { FiMail, FiLock, FiEye, FiEyeOff, FiChef, FiBug } = FiIcons;
 
 const Login = () => {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, debugInfo, clearDebugInfo } = useAuth();
+  const { success, error: showError } = useToast();
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -16,6 +19,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showDebug, setShowDebug] = useState(false);
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
@@ -25,12 +29,27 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    clearDebugInfo();
 
-    const result = await login(formData);
-    if (!result.success) {
-      setError(result.error || 'Login failed');
+    try {
+      console.log('Submitting login form...');
+      const result = await login(formData);
+      
+      console.log('Login result:', result);
+      
+      if (!result.success) {
+        setError(result.error || 'Login failed');
+        showError('Login Failed', result.error || 'Invalid credentials');
+      } else {
+        success('Login successful!', 'Welcome back');
+      }
+    } catch (err) {
+      console.error('Login form error:', err);
+      setError('An unexpected error occurred: ' + err.message);
+      showError('System Error', err.message);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleChange = (e) => {
@@ -156,6 +175,24 @@ const Login = () => {
               </Link>
             </p>
           </div>
+          
+          {/* Debug Toggle Button */}
+          <div className="mt-4 text-center">
+            <button 
+              onClick={() => setShowDebug(!showDebug)} 
+              className="text-text-secondary text-xs inline-flex items-center"
+            >
+              <SafeIcon icon={FiBug} className="w-3 h-3 mr-1" />
+              {showDebug ? 'Hide Debug Info' : 'Show Debug Info'}
+            </button>
+          </div>
+          
+          {/* Debug Information */}
+          {showDebug && Object.keys(debugInfo).length > 0 && (
+            <div className="debug-info mt-4 text-xs">
+              {JSON.stringify(debugInfo, null, 2)}
+            </div>
+          )}
         </motion.div>
 
         {/* Privacy Notice */}
