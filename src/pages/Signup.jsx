@@ -5,13 +5,15 @@ import { Navigate, Link } from 'react-router-dom';
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiMail, FiLock, FiEye, FiEyeOff, FiChef } = FiIcons;
+const { FiMail, FiLock, FiEye, FiEyeOff, FiChef, FiUser } = FiIcons;
 
-const Login = () => {
-  const { login, isAuthenticated } = useAuth();
+const Signup = () => {
+  const { signup, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
     password: '',
+    confirmPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,15 +28,27 @@ const Login = () => {
     setIsLoading(true);
     setError('');
 
+    // Basic validation
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const result = await login(formData);
+      const result = await signup(formData);
       if (!result.success) {
-        setError(result.error || 'Login failed');
+        setError(result.error || 'Signup failed');
       }
     } catch (err) {
-      setError('An error occurred during login');
+      setError('An error occurred during signup');
     }
-    
     setIsLoading(false);
   };
 
@@ -47,7 +61,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5 flex items-center justify-center p-4">
-      <motion.div 
+      <motion.div
         className="w-full max-w-md"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -64,14 +78,14 @@ const Login = () => {
             <SafeIcon icon={FiChef} className="w-10 h-10 text-white" />
           </motion.div>
           <h1 className="text-3xl font-bold text-text-primary mb-2">
-            Welcome Back
+            Join BusyBites
           </h1>
           <p className="text-text-secondary">
-            Sign in to continue to BusyBites
+            Create your account to start cooking
           </p>
         </div>
 
-        {/* Login Form */}
+        {/* Signup Form */}
         <motion.div
           className="bg-surface rounded-2xl p-8 shadow-xl backdrop-blur-sm"
           initial={{ opacity: 0, y: 20 }}
@@ -88,6 +102,28 @@ const Login = () => {
                 <p className="text-error text-sm">{error}</p>
               </motion.div>
             )}
+
+            {/* Name Input */}
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-2">
+                Full Name
+              </label>
+              <div className="relative">
+                <SafeIcon
+                  icon={FiUser}
+                  className="absolute left-3 top-3 w-5 h-5 text-text-secondary"
+                />
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                  placeholder="Enter your full name"
+                  required
+                />
+              </div>
+            </div>
 
             {/* Email Input */}
             <div>
@@ -127,7 +163,7 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleChange}
                   className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                  placeholder="Enter your password"
+                  placeholder="Create a password"
                   required
                 />
                 <button
@@ -143,6 +179,28 @@ const Login = () => {
               </div>
             </div>
 
+            {/* Confirm Password Input */}
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-2">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <SafeIcon
+                  icon={FiLock}
+                  className="absolute left-3 top-3 w-5 h-5 text-text-secondary"
+                />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                  placeholder="Confirm your password"
+                  required
+                />
+              </div>
+            </div>
+
             <motion.button
               type="submit"
               disabled={isLoading}
@@ -153,21 +211,21 @@ const Login = () => {
               {isLoading ? (
                 <div className="flex items-center justify-center space-x-2">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Signing In...</span>
+                  <span>Creating Account...</span>
                 </div>
               ) : (
-                'Sign In'
+                'Create Account'
               )}
             </motion.button>
-            
+
             <div className="text-center text-sm text-text-secondary">
               <p>
-                Don't have an account?{' '}
+                Already have an account?{' '}
                 <Link
-                  to="/signup"
+                  to="/login"
                   className="text-primary hover:text-primary/80 font-medium"
                 >
-                  Sign Up
+                  Sign In
                 </Link>
               </p>
             </div>
@@ -182,11 +240,11 @@ const Login = () => {
           transition={{ delay: 0.5 }}
         >
           <p>🔒 Your data is securely stored and never shared</p>
-          <p>Access for authorized users only</p>
+          <p>For authorized users only</p>
         </motion.div>
       </motion.div>
     </div>
   );
 };
 
-export default Login;
+export default Signup;

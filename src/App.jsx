@@ -12,6 +12,7 @@ import RecipeDetail from './pages/RecipeDetail';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
+import Signup from './pages/Signup';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminRecipes from './pages/admin/AdminRecipes';
@@ -42,27 +43,34 @@ function App() {
                 <Routes>
                   {/* Public Routes */}
                   <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
                   <Route path="/admin/login" element={<AdminLogin />} />
-                  
+
                   {/* Protected App Routes */}
-                  <Route path="/" element={
-                    <ProtectedRoute>
-                      <Layout />
-                    </ProtectedRoute>
-                  }>
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute>
+                        <Layout />
+                      </ProtectedRoute>
+                    }
+                  >
                     <Route index element={<Home />} />
                     <Route path="recipes" element={<Recipes />} />
                     <Route path="recipes/:id" element={<RecipeDetail />} />
                     <Route path="profile" element={<Profile />} />
                     <Route path="settings" element={<Settings />} />
                   </Route>
-                  
+
                   {/* Admin Routes */}
-                  <Route path="/admin" element={
-                    <AdminProtectedRoute>
-                      <AdminLayout />
-                    </AdminProtectedRoute>
-                  }>
+                  <Route
+                    path="/admin"
+                    element={
+                      <AdminProtectedRoute>
+                        <AdminLayout />
+                      </AdminProtectedRoute>
+                    }
+                  >
                     <Route index element={<AdminDashboard />} />
                     <Route path="recipes" element={<AdminRecipes />} />
                     <Route path="users" element={<AdminUsers />} />

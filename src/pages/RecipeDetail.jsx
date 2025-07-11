@@ -33,7 +33,12 @@ const RecipeDetail = () => {
   }, [recipe, addToRecentlyViewed]);
 
   const handleGoBack = () => {
-    navigate(-1);
+    // Try to go back in history, but if there's no history, go to recipes page
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/recipes');
+    }
   };
 
   const handleToggleFavorite = () => {
@@ -101,7 +106,10 @@ const RecipeDetail = () => {
           <p className="text-text-secondary mb-4">
             The recipe you're looking for doesn't exist or has been removed.
           </p>
-          <Link to="/recipes" className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+          <Link
+            to="/recipes"
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          >
             Back to Recipes
           </Link>
         </div>
@@ -127,16 +135,20 @@ const RecipeDetail = () => {
 
         {/* Navigation */}
         <div className="absolute top-4 left-4 right-4 flex justify-between">
-          <button 
+          <motion.button
             onClick={handleGoBack}
             className="p-2 bg-black/20 rounded-full backdrop-blur-sm hover:bg-black/30 transition-colors"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
           >
             <SafeIcon icon={FiArrowLeft} className="w-6 h-6 text-white" />
-          </button>
+          </motion.button>
           <div className="flex space-x-2">
-            <button
+            <motion.button
               onClick={handleToggleFavorite}
               className="p-2 bg-black/20 rounded-full backdrop-blur-sm hover:bg-black/30 transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
             >
               <SafeIcon
                 icon={FiHeart}
@@ -146,19 +158,23 @@ const RecipeDetail = () => {
                     : 'text-white'
                 }`}
               />
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               onClick={handleShare}
               className="p-2 bg-black/20 rounded-full backdrop-blur-sm hover:bg-black/30 transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
             >
               <SafeIcon icon={FiShare} className="w-6 h-6 text-white" />
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               onClick={handlePrint}
               className="p-2 bg-black/20 rounded-full backdrop-blur-sm hover:bg-black/30 transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
             >
               <SafeIcon icon={FiPrinter} className="w-6 h-6 text-white" />
-            </button>
+            </motion.button>
           </div>
         </div>
 

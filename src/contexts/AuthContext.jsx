@@ -23,6 +23,30 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(false);
   }, []);
 
+  const signup = async (credentials) => {
+    try {
+      // Simulate API call
+      const newUser = {
+        id: Date.now().toString(),
+        email: credentials.email,
+        name: credentials.name,
+        avatar: null,
+        preferences: {
+          dietaryRestrictions: [],
+          skillLevel: 'beginner',
+          cookingTime: 30,
+        },
+        createdAt: new Date().toISOString(),
+      };
+
+      setUser(newUser);
+      localStorage.setItem('busybites_user', JSON.stringify(newUser));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
   const login = async (credentials) => {
     try {
       // Simulate API call
@@ -61,6 +85,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     isLoading,
+    signup, // Added signup function
     login,
     logout,
     updateUser,
