@@ -18,14 +18,3 @@ body {
   width: 100%;
   height: 100%;
 }
-
-/* Add this style for debugging */
-.debug-info {
-  padding: 10px;
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  margin-top: 20px;
-  font-family: monospace;
-  white-space: pre-wrap;
-}

@@ -1,23 +1,20 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../contexts/ToastContext';
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiUser, FiClock, FiShield, FiBell, FiMoon, FiGlobe, FiCheck } = FiIcons;
+const { FiUser, FiClock, FiShield, FiBell, FiMoon, FiGlobe } = FiIcons;
 
 const Settings = () => {
   const { user, updateUser } = useAuth();
-  const { success, error: showError } = useToast();
-  const [isSaving, setIsSaving] = useState(false);
   const [preferences, setPreferences] = useState({
     skillLevel: user?.preferences?.skillLevel || 'intermediate',
     cookingTime: user?.preferences?.cookingTime || 30,
     dietaryRestrictions: user?.preferences?.dietaryRestrictions || [],
-    notifications: user?.preferences?.notifications ?? true,
-    darkMode: user?.preferences?.darkMode ?? false,
-    language: user?.preferences?.language || 'en',
+    notifications: true,
+    darkMode: false,
+    language: 'en',
   });
 
   const skillLevels = ['beginner', 'intermediate', 'advanced'];
@@ -40,61 +37,39 @@ const Settings = () => {
     }));
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const result = await updateUser({
-        preferences: {
-          skillLevel: preferences.skillLevel,
-          cookingTime: preferences.cookingTime,
-          dietaryRestrictions: preferences.dietaryRestrictions,
-          notifications: preferences.notifications,
-          darkMode: preferences.darkMode,
-          language: preferences.language,
-        },
-      });
-      
-      if (result.success) {
-        success('Settings saved successfully!', 'Your preferences have been updated.');
-      } else {
-        showError('Failed to save settings', result.error);
-      }
-    } catch (err) {
-      showError('Error', 'An unexpected error occurred. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
+  const handleSave = () => {
+    updateUser({
+      preferences: {
+        skillLevel: preferences.skillLevel,
+        cookingTime: preferences.cookingTime,
+        dietaryRestrictions: preferences.dietaryRestrictions,
+      },
+    });
+    // Show success message
+    alert('Settings saved successfully!');
   };
 
   return (
     <div className="min-h-screen bg-background">
       <div className="px-4 py-6">
-        <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-          {/* Welcome Banner */}
-          {!user?.preferences?.skillLevel && (
-            <motion.div 
-              className="bg-gradient-to-r from-primary to-secondary rounded-lg p-4 text-white mb-6"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <h3 className="font-semibold mb-2">Welcome to BusyBites!</h3>
-              <p className="text-white/90 mb-2">
-                Please take a moment to set your cooking preferences to get personalized recipes.
-              </p>
-              <div className="flex items-center text-white/90">
-                <SafeIcon icon={FiCheck} className="w-4 h-4 mr-2" />
-                <span>Your account has been successfully created</span>
-              </div>
-            </motion.div>
-          )}
-
+        <motion.div
+          className="space-y-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
           {/* Profile Settings */}
-          <motion.div className="bg-surface rounded-lg p-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <motion.div
+            className="bg-surface rounded-lg p-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
             <div className="flex items-center space-x-3 mb-4">
               <SafeIcon icon={FiUser} className="w-5 h-5 text-primary" />
               <h3 className="font-semibold text-text-primary">Profile Settings</h3>
             </div>
+            
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-2">
@@ -162,11 +137,17 @@ const Settings = () => {
           </motion.div>
 
           {/* Notification Settings */}
-          <motion.div className="bg-surface rounded-lg p-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <motion.div
+            className="bg-surface rounded-lg p-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
             <div className="flex items-center space-x-3 mb-4">
               <SafeIcon icon={FiBell} className="w-5 h-5 text-primary" />
               <h3 className="font-semibold text-text-primary">Notifications</h3>
             </div>
+            
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-text-primary">Push Notifications</span>
@@ -187,11 +168,17 @@ const Settings = () => {
           </motion.div>
 
           {/* App Settings */}
-          <motion.div className="bg-surface rounded-lg p-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <motion.div
+            className="bg-surface rounded-lg p-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
             <div className="flex items-center space-x-3 mb-4">
               <SafeIcon icon={FiGlobe} className="w-5 h-5 text-primary" />
               <h3 className="font-semibold text-text-primary">App Settings</h3>
             </div>
+            
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-text-primary">Dark Mode</span>
@@ -208,6 +195,7 @@ const Settings = () => {
                   />
                 </button>
               </div>
+              
               <div className="flex items-center justify-between">
                 <span className="text-text-primary">Language</span>
                 <select
@@ -225,11 +213,17 @@ const Settings = () => {
           </motion.div>
 
           {/* Privacy Settings */}
-          <motion.div className="bg-surface rounded-lg p-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <motion.div
+            className="bg-surface rounded-lg p-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
             <div className="flex items-center space-x-3 mb-4">
               <SafeIcon icon={FiShield} className="w-5 h-5 text-primary" />
               <h3 className="font-semibold text-text-primary">Privacy & Security</h3>
             </div>
+            
             <div className="space-y-3 text-sm text-text-secondary">
               <p>🔒 This app is private and hidden from search engines</p>
               <p>📱 Data is stored locally on your device</p>
@@ -241,22 +235,14 @@ const Settings = () => {
           {/* Save Button */}
           <motion.button
             onClick={handleSave}
-            disabled={isSaving}
-            className="w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-70"
+            className="w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            {isSaving ? (
-              <div className="flex items-center justify-center space-x-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Saving...</span>
-              </div>
-            ) : (
-              'Save Settings'
-            )}
+            Save Settings
           </motion.button>
         </motion.div>
       </div>

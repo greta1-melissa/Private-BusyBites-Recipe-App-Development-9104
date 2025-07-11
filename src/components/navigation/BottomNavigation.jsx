@@ -4,12 +4,11 @@ import { motion } from 'framer-motion';
 import SafeIcon from '../../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiHome, FiBook, FiUser, FiSettings, FiGrid } = FiIcons;
+const { FiHome, FiBook, FiUser, FiSettings } = FiIcons;
 
 const BottomNavigation = () => {
   const navItems = [
     { path: '/', icon: FiHome, label: 'Home' },
-    { path: '/dashboard', icon: FiGrid, label: 'Dashboard' },
     { path: '/recipes', icon: FiBook, label: 'Recipes' },
     { path: '/profile', icon: FiUser, label: 'Profile' },
     { path: '/settings', icon: FiSettings, label: 'Settings' },
@@ -42,7 +41,10 @@ const BottomNavigation = () => {
                 whileTap={{ scale: 0.9 }}
               >
                 <div className={`w-6 h-6 mb-1 ${isActive ? 'text-primary' : 'text-text-secondary'}`}>
-                  <SafeIcon icon={item.icon} className="w-full h-full" />
+                  <SafeIcon
+                    icon={item.icon}
+                    className="w-full h-full"
+                  />
                 </div>
                 <span
                   className={`text-xs font-medium ${

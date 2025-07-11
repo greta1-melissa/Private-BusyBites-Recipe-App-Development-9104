@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { recipesData } from '../data/recipes';
-import { supabase } from '../lib/supabase';
-import { useAuth } from './AuthContext';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 const AppContext = createContext();
 
@@ -14,11 +13,9 @@ export const useApp = () => {
 };
 
 export const AppProvider = ({ children }) => {
-  const { user } = useAuth();
   const [recipes, setRecipes] = useState(recipesData);
-  const [favorites, setFavorites] = useState([]);
-  const [recentlyViewed, setRecentlyViewed] = useState([]);
-  const [cookingSessions, setCookingSessions] = useState([]);
+  const [favorites, setFavorites] = useLocalStorage('busybites_favorites', []);
+  const [recentlyViewed, setRecentlyViewed] = useLocalStorage('busybites_recently_viewed', []);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     category: '',
@@ -26,234 +23,35 @@ export const AppProvider = ({ children }) => {
     time: '',
     dietary: [],
   });
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState('newest'); // newest, rating, time, difficulty
 
-  // Load user data from Supabase when user changes
-  useEffect(() => {
-    if (user) {
-      loadUserData();
-    } else {
-      // Reset to empty state when user logs out
-      setFavorites([]);
-      setRecentlyViewed([]);
-      setCookingSessions([]);
-    }
-  }, [user]);
-
-  const loadUserData = async () => {
-    if (!user) return;
-    
-    try {
-      console.log('Loading user data for:', user.id);
-      
-      // Load favorites
-      try {
-        const { data: favoritesData, error: favoritesError } = await supabase
-          .from('user_favorites_bb2024')
-          .select('recipe_id')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (favoritesError) {
-          console.error('Error loading favorites:', favoritesError);
-        } else if (favoritesData) {
-          setFavorites(favoritesData.map(f => f.recipe_id));
-          console.log('Loaded favorites:', favoritesData.length);
-        }
-      } catch (err) {
-        console.error('Favorites load exception:', err);
-      }
-      
-      // Load recently viewed
-      try {
-        const { data: recentData, error: recentError } = await supabase
-          .from('user_recent_bb2024')
-          .select('recipe_id')
-          .eq('user_id', user.id)
-          .order('viewed_at', { ascending: false })
-          .limit(10);
-
-        if (recentError) {
-          console.error('Error loading recently viewed:', recentError);
-        } else if (recentData) {
-          setRecentlyViewed(recentData.map(r => r.recipe_id));
-          console.log('Loaded recent views:', recentData.length);
-        }
-      } catch (err) {
-        console.error('Recent views load exception:', err);
-      }
-      
-      // Load cooking sessions
-      try {
-        const { data: sessionsData, error: sessionsError } = await supabase
-          .from('cooking_sessions_bb2024')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('started_at', { ascending: false });
-
-        if (sessionsError) {
-          console.error('Error loading cooking sessions:', sessionsError);
-        } else if (sessionsData) {
-          setCookingSessions(sessionsData);
-          console.log('Loaded cooking sessions:', sessionsData.length);
-        }
-      } catch (err) {
-        console.error('Cooking sessions load exception:', err);
-      }
-    } catch (error) {
-      console.error('Error loading user data:', error);
-    }
+  const toggleFavorite = (recipeId) => {
+    const newFavorites = favorites.includes(recipeId)
+      ? favorites.filter(id => id !== recipeId)
+      : [...favorites, recipeId];
+    setFavorites(newFavorites);
   };
 
-  const toggleFavorite = async (recipeId) => {
-    if (!user) return;
-    
-    const isFavorite = favorites.includes(recipeId);
-    
-    try {
-      if (isFavorite) {
-        // Remove from favorites
-        console.log('Removing favorite:', recipeId);
-        const { error } = await supabase
-          .from('user_favorites_bb2024')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('recipe_id', recipeId);
-
-        if (error) {
-          console.error('Error removing favorite:', error);
-          return;
-        }
-        
-        setFavorites(prev => prev.filter(id => id !== recipeId));
-      } else {
-        // Add to favorites
-        console.log('Adding favorite:', recipeId);
-        const { error } = await supabase
-          .from('user_favorites_bb2024')
-          .insert({
-            user_id: user.id,
-            recipe_id: recipeId
-          });
-
-        if (error) {
-          console.error('Error adding favorite:', error);
-          return;
-        }
-        
-        setFavorites(prev => [recipeId, ...prev]);
-      }
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-    }
+  const addToRecentlyViewed = (recipeId) => {
+    const newRecentlyViewed = [
+      recipeId,
+      ...recentlyViewed.filter(id => id !== recipeId)
+    ].slice(0, 10);
+    setRecentlyViewed(newRecentlyViewed);
   };
 
-  const addToRecentlyViewed = async (recipeId) => {
-    if (!user) return;
-    
-    try {
-      console.log('Adding to recently viewed:', recipeId);
-      // Use upsert to handle duplicates
-      const { error } = await supabase
-        .from('user_recent_bb2024')
-        .upsert(
-          {
-            user_id: user.id,
-            recipe_id: recipeId,
-            viewed_at: new Date().toISOString()
-          },
-          { onConflict: 'user_id,recipe_id' }
-        );
-
-      if (error) {
-        console.error('Error adding to recently viewed:', error);
-        return;
-      }
-      
-      setRecentlyViewed(prev => {
-        const filtered = prev.filter(id => id !== recipeId);
-        return [recipeId, ...filtered].slice(0, 10);
-      });
-    } catch (error) {
-      console.error('Error adding to recently viewed:', error);
-    }
-  };
-
-  // The rest of the functions remain the same
-  const startCookingSession = async (recipe) => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('cooking_sessions_bb2024')
-        .insert({
-          user_id: user.id,
-          recipe_id: recipe.id,
-          recipe_title: recipe.title,
-          started_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error starting cooking session:', error);
-        return null;
-      }
-      
-      if (data) {
-        setCookingSessions(prev => [data, ...prev]);
-        return data;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error starting cooking session:', error);
-      return null;
-    }
-  };
-
-  const completeCookingSession = async (sessionId, rating = null, notes = null) => {
-    if (!user) return;
-    
-    try {
-      const completedAt = new Date().toISOString();
-      
-      const { error } = await supabase
-        .from('cooking_sessions_bb2024')
-        .update({
-          completed_at: completedAt,
-          rating,
-          notes
-        })
-        .eq('id', sessionId)
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error('Error completing cooking session:', error);
-        return;
-      }
-      
-      setCookingSessions(prev => 
-        prev.map(session => 
-          session.id === sessionId 
-            ? { ...session, completed_at: completedAt, rating, notes } 
-            : session
-        )
-      );
-    } catch (error) {
-      console.error('Error completing cooking session:', error);
-    }
-  };
-
-  // Filter and sorting functions
   const getFilteredRecipes = () => {
     let filtered = recipes.filter(recipe => {
       const matchesSearch = !searchQuery || 
         recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         recipe.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        recipe.ingredients.some(ing => ing.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        recipe.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-      
+        recipe.ingredients.some(ing => 
+          ing.name.toLowerCase().includes(searchQuery.toLowerCase())
+        ) ||
+        recipe.tags.some(tag => 
+          tag.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
       const matchesCategory = !filters.category || recipe.category === filters.category;
       const matchesDifficulty = !filters.difficulty || recipe.difficulty === filters.difficulty;
       const matchesTime = !filters.time || recipe.cookingTime <= parseInt(filters.time);
@@ -284,7 +82,6 @@ export const AppProvider = ({ children }) => {
     return filtered;
   };
 
-  // Helper getters
   const getFavoriteRecipes = () => {
     return recipes.filter(recipe => favorites.includes(recipe.id));
   };
@@ -311,6 +108,32 @@ export const AppProvider = ({ children }) => {
     return recipes.filter(recipe => recipe.dietary.includes(dietary));
   };
 
+  const addRecipe = (newRecipe) => {
+    const recipe = {
+      ...newRecipe,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      rating: 0,
+      reviews: 0,
+      author: 'You'
+    };
+    setRecipes(prev => [recipe, ...prev]);
+    return recipe;
+  };
+
+  const updateRecipe = (id, updates) => {
+    setRecipes(prev => prev.map(recipe => 
+      recipe.id === id ? { ...recipe, ...updates } : recipe
+    ));
+  };
+
+  const deleteRecipe = (id) => {
+    setRecipes(prev => prev.filter(recipe => recipe.id !== id));
+    // Also remove from favorites and recently viewed
+    setFavorites(prev => prev.filter(fId => fId !== id));
+    setRecentlyViewed(prev => prev.filter(rId => rId !== id));
+  };
+
   const clearFilters = () => {
     setFilters({
       category: '',
@@ -322,17 +145,10 @@ export const AppProvider = ({ children }) => {
   };
 
   const getStats = () => {
-    const completedSessions = cookingSessions.filter(s => s.completed_at);
-    
     return {
       totalRecipes: recipes.length,
       favoriteCount: favorites.length,
       recentCount: recentlyViewed.length,
-      cookingSessionsCount: cookingSessions.length,
-      completedSessionsCount: completedSessions.length,
-      averageRating: completedSessions.length > 0 
-        ? completedSessions.reduce((sum, s) => sum + (s.rating || 0), 0) / completedSessions.length 
-        : 0,
       categoryCounts: {
         breakfast: recipes.filter(r => r.category === 'breakfast').length,
         lunch: recipes.filter(r => r.category === 'lunch').length,
@@ -352,21 +168,21 @@ export const AppProvider = ({ children }) => {
     recipes,
     favorites,
     recentlyViewed,
-    cookingSessions,
     searchQuery,
     filters,
     sortBy,
-    
+
     // Actions
     setSearchQuery,
     setFilters,
     setSortBy,
     toggleFavorite,
     addToRecentlyViewed,
-    startCookingSession,
-    completeCookingSession,
+    addRecipe,
+    updateRecipe,
+    deleteRecipe,
     clearFilters,
-    
+
     // Getters
     getFilteredRecipes,
     getFavoriteRecipes,
